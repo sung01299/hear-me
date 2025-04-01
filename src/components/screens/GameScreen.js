@@ -1,16 +1,14 @@
 import React from 'react';
-import { Crown } from 'lucide-react';
+import { Crown, Music, BarChart2 } from 'lucide-react';
+import '../RhythmGame/RhythmGame.css';
 
 /**
- * Main gameplay screen component
+ * Enhanced Main gameplay screen component
  */
 const GameScreen = ({ 
   notes, score, combo, maxCombo, rating,
-  // fever, feverGauge, 
   keyStates, keyAnimations, effectAnimations, comboEffect, 
-  missAnim, lastCombo, 
-  // feverAnim, 
-  songName, bpm
+  missAnim, lastCombo, songName, bpm
 }) => {
   // Key position constants
   const trackPositions = [
@@ -34,15 +32,16 @@ const GameScreen = ({
   };
 
   return (
-    <div className="game-container bg-gradient">
-      {/* Background elements */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {/* Gear/lane graphics would go here */}
-        <div className="w-1/4 h-full bg-black/30 backdrop-blur-sm"></div>
+    <div className="game-container">
+      {/* Animated Background */}
+      <div className="game-bg-gradient">
+        <div className="game-bg-scanlines"></div>
+        <div className="game-bg-glow"></div>
       </div>
       
       {/* Song info */}
       <div className="game-song-info">
+        <Music className="game-song-icon" size={18} />
         <div className="game-song-name">{songName}</div>
         <div className="game-song-bpm">BPM: {bpm}</div>
       </div>
@@ -50,7 +49,10 @@ const GameScreen = ({
       {/* Score and combo display */}
       <div className="game-score">
         <div className="game-score-value">{Math.floor(score)}</div>
-        <div className="game-max-combo">Max Combo: {maxCombo}</div>
+        <div className="game-max-combo">
+          <Crown size={14} className="game-crown-icon" />
+          <span>Max Combo: {maxCombo}</span>
+        </div>
       </div>
       
       {/* Rating display */}
@@ -75,35 +77,45 @@ const GameScreen = ({
             transform: `scale(${1 + comboEffect * 0.2})`,
           }}
         >
+          {combo > 0 && <span className="game-combo-x">×</span>}
           {combo}
         </div>
         
         {/* Lost combo display */}
-        {/* <div 
+        <div 
           className="game-lost-combo"
           style={{ 
             opacity: missAnim,
-            transform: `scale(${missAnim * 4})`,
+            transform: `translateY(${missAnim * 50}px) scale(${Math.max(0.5, 1 - missAnim)})`,
           }}
         >
           {lastCombo}
-        </div> */}
+        </div>
       </div>
       
-      {/* Lane dividers */}
-      <div className="game-lanes">
-        <div className="game-lane-divider"></div>
-        <div className="game-lane-divider"></div>
-        <div className="game-lane-divider"></div>
+      {/* Lane dividers and visualizers */}
+      <div className="game-lane-container">
+        {[0, 1, 2, 3].map(index => (
+          <div 
+            key={`lane-${index}`} 
+            className={`game-lane ${keyStates[index] ? 'game-lane-active' : ''}`}
+            style={{
+              left: trackPositions[index].x,
+            }}
+          >
+            <div className="game-lane-glow"></div>
+          </div>
+        ))}
       </div>
       
       {/* Hit line */}
       <div className="game-hit-line">
         <div className="game-hit-line-inner"></div>
+        <div className="game-hit-line-glow"></div>
       </div>
       
       {/* Notes */}
-      <div className="absolute inset-0">
+      <div className="game-notes-container">
         {notes.t1.map((note, index) => (
           <div 
             key={`t1-${index}`} 
@@ -113,7 +125,9 @@ const GameScreen = ({
               top: `${note.y}px`,
               transform: 'translateX(-50%)'
             }}
-          ></div>
+          >
+            <div className="game-note-glow"></div>
+          </div>
         ))}
         
         {notes.t2.map((note, index) => (
@@ -125,7 +139,9 @@ const GameScreen = ({
               top: `${note.y}px`,
               transform: 'translateX(-50%)'
             }}
-          ></div>
+          >
+            <div className="game-note-glow"></div>
+          </div>
         ))}
         
         {notes.t3.map((note, index) => (
@@ -137,7 +153,9 @@ const GameScreen = ({
               top: `${note.y}px`,
               transform: 'translateX(-50%)'
             }}
-          ></div>
+          >
+            <div className="game-note-glow"></div>
+          </div>
         ))}
         
         {notes.t4.map((note, index) => (
@@ -149,7 +167,9 @@ const GameScreen = ({
               top: `${note.y}px`,
               transform: 'translateX(-50%)'
             }}
-          ></div>
+          >
+            <div className="game-note-glow"></div>
+          </div>
         ))}
       </div>
       
@@ -167,6 +187,7 @@ const GameScreen = ({
           <span className="game-key-letter">
             {index === 0 ? 'D' : index === 1 ? 'F' : index === 2 ? 'J' : 'K'}
           </span>
+          <div className="game-key-ring"></div>
         </div>
       ))}
       
@@ -181,8 +202,11 @@ const GameScreen = ({
               top: `${pos.y}px`,
               transform: 'translate(-50%, -50%)',
               opacity: 1 - (effectAnimations[index] / 5),
+              scale: 1 + (1 - effectAnimations[index] / 5) * 0.5,
             }}
-          ></div>
+          >
+            <div className="game-hit-effect-inner"></div>
+          </div>
         )
       ))}
       

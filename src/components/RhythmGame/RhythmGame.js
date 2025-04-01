@@ -222,7 +222,7 @@ const RhythmGame = () => {
         audio.load();
       });
       // songEndTimeRef.current = audioDuration;
-      songEndTimeRef.current = 4;
+      songEndTimeRef.current = 8;
       
       // Use progress indicator while parsing
       setLoadingProgress(10);
@@ -623,7 +623,6 @@ const RhythmGame = () => {
     return <ResultScreen 
       score={score}
       maxCombo={maxCombo}
-      rating={rating}
       songName={songData[currentSong].name}
       perfectCount={perfectCount}
       greatCount={greatCount}
