@@ -42,6 +42,7 @@ export const parseNoteFile = (fileContent) => {
           // In the original game: notes = 240 / bpm / beat
           const noteTimeInSeconds = 240 / noteBpm / beat;
           currentTime += noteTimeInSeconds;
+          console.log("index", i, "keyCode", keyCode, "noteTimeInSeconds", noteTimeInSeconds, "currentTime", currentTime);
           
           // Process which lanes have notes
           if (keyCode[0] === '1') {
@@ -67,7 +68,6 @@ export const parseNoteFile = (fileContent) => {
     return {
       noteStartTime,
       songStartTime,
-      baseBpm,
       parsedNotes,
       totalNotes
     };

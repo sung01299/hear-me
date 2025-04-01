@@ -53,18 +53,6 @@ const GameScreen = ({
         <div className="game-max-combo">Max Combo: {maxCombo}</div>
       </div>
       
-      {/* Fever gauge */}
-      {/* <div className="game-fever">
-        <Crown className={`game-fever-icon ${feverAnim > 0 ? 'text-yellow-400 animate-pulse' : 'text-white'}`} />
-        <div className="game-fever-value">x{fever}</div>
-        <div className="game-fever-gauge">
-          <div 
-            className="game-fever-fill"
-            style={{ width: `${(feverGauge / 128) * 100}%` }}
-          ></div>
-        </div>
-      </div> */}
-      
       {/* Rating display */}
       <div className="game-rating">
         <div 

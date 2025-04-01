@@ -4,6 +4,7 @@ import { parseNoteFile } from './NoteParser';
 import LobbyScreen from '../screens/LobbyScreen';
 import LoadingScreen from '../screens/LoadingScreen';
 import GameScreen from '../screens/GameScreen';
+import ResultScreen from '../screens/ResultScreen';
 import './RhythmGame.css';
 
 // Main App Component
@@ -14,9 +15,7 @@ const RhythmGame = () => {
   const [combo, setCombo] = useState(0);
   const [maxCombo, setMaxCombo] = useState(0);
   const [rating, setRating] = useState('READY');
-  // const [fever, setFever] = useState(1);
-  // const [feverGauge, setFeverGauge] = useState(0);
-  const [notes, setNotes] = useState({ t1: [], t2: [], t3: [], t4: [] });
+  // const [notes, setNotes] = useState({ t1: [], t2: [], t3: [], t4: [] });
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [keyStates, setKeyStates] = useState([false, false, false, false]);
   const [keyAnimations, setKeyAnimations] = useState([0, 0, 0, 0]);
@@ -24,34 +23,64 @@ const RhythmGame = () => {
   const [comboEffect, setComboEffect] = useState(0);
   const [missAnim, setMissAnim] = useState(0);
   const [lastCombo, setLastCombo] = useState(0);
-  // const [feverAnim, setFeverAnim] = useState(0);
   const [noteCount, setNoteCount] = useState(0);
+  const [perfectCount, setPerfectCount] = useState(0);
+  const [greatCount, setGreatCount] = useState(0);
+  const [goodCount, setGoodCount] = useState(0);
+  const [badCount, setBadCount] = useState(0);
+  const [worstCount, setWorstCount] = useState(0);
+  const [missCount, setMissCount] = useState(0);
   
   const songRef = useRef(null);
   const gameLoopRef = useRef(null);
   const gameStartTimeRef = useRef(0);
   const songStartTimeRef = useRef(0);
   const noteStartTimeRef = useRef(0);
+  const songEndTimeRef = useRef(0);
   const comboTimeRef = useRef(0);
   const ratingTimeoutRef = useRef(null);
   const lastDebugTimeRef = useRef(0);
+
+  const gameStateRef = useRef(gameState);
+  const scoreRef = useRef(score);
+  const comboRef = useRef(combo);
+  const maxComboRef = useRef(maxCombo);
+  const ratingRef = useRef(rating);
+  const notesRef = useRef({ t1: [], t2: [], t3: [], t4: [] });
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+  
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
+  
+  useEffect(() => {
+    comboRef.current = combo;
+  }, [combo]);
+  
+  useEffect(() => {
+    maxComboRef.current = maxCombo;
+  }, [maxCombo]);
+  
+  useEffect(() => {
+    ratingRef.current = rating;
+  }, [rating]);
   
   // Debug helper to track state
   const debugState = () => {
     console.log("Current Game State (DEBUG):", {
-      gameState,
-      score,
-      combo,
-      maxCombo,
-      // fever,
-      // feverGauge,
-      rating,
-      noteCount,
+      gameState: gameStateRef.current,
+      score: scoreRef.current,
+      combo: comboRef.current,
+      maxCombo: maxComboRef.current,
+      rating: ratingRef.current,
       notesRemaining: {
-        t1: notes.t1.length,
-        t2: notes.t2.length,
-        t3: notes.t3.length,
-        t4: notes.t4.length
+        t1: notesRef.current.t1.length,
+        t2: notesRef.current.t2.length,
+        t3: notesRef.current.t3.length,
+        t4: notesRef.current.t4.length,
       }
     });
   };
@@ -65,10 +94,10 @@ const RhythmGame = () => {
 
   // Key to track mapping
   const keyMapping = {
-    'd': 0, // Track 1
-    'f': 1, // Track 2
-    'j': 2, // Track 3
-    'k': 3  // Track 4
+    'd': 0,
+    'f': 1,
+    'j': 2,
+    'k': 3 
   };
 
   // Handle key press events
@@ -106,6 +135,15 @@ const RhythmGame = () => {
           // Start loading the song
           setGameState('loading');
           loadSong(songData[currentSong].noteFile, songData[currentSong].audioFile);
+        }
+      }
+      
+      // Result screen navigation
+      if (gameState === 'result') {
+        if (key === ' ') {
+          // Reset to lobby
+          setGameState('lobby');
+          setCurrentSong(0);
         }
       }
     };
@@ -171,14 +209,26 @@ const RhythmGame = () => {
       });
 
       audio.src = audioPath;
-      audio.load();
+
+      // Get the audio's length
+      const audioDuration = await new Promise((resolve, reject) => {
+        audio.addEventListener('loadedmetadata', () => {
+          resolve(audio.duration);
+        });
+        audio.addEventListener('error', (e) => {
+          console.error("Audio loading error:", e);
+          reject(e);
+        });
+        audio.load();
+      });
+      // songEndTimeRef.current = audioDuration;
+      songEndTimeRef.current = 4;
       
       // Use progress indicator while parsing
       setLoadingProgress(10);
       
       // Parse the note data
-      const { noteStartTime, songStartTime, baseBpm, parsedNotes, totalNotes } = parseNoteFile(fileContent);
-      // console.log("Parsed note data:", { noteStartTime, songStartTime, baseBpm, totalNotes });
+      const { noteStartTime, songStartTime, parsedNotes, totalNotes } = parseNoteFile(fileContent);
       
       setLoadingProgress(70);
       
@@ -188,7 +238,7 @@ const RhythmGame = () => {
       setNoteCount(totalNotes);
       
       // Set the notes
-      setNotes(parsedNotes);
+      notesRef.current = parsedNotes;
       
       setLoadingProgress(100);
       
@@ -199,9 +249,8 @@ const RhythmGame = () => {
       
     } catch (error) {
       console.error("Error loading song:", error);
-      // Fallback to demo notes if file loading fails
       const generatedNotes = generateDemoNotes(songData[currentSong].bpm);
-      setNotes(generatedNotes);
+      notesRef.current = generatedNotes;
       setNoteCount(100); // Set a reasonable default note count
       setLoadingProgress(100);
       setTimeout(() => {
@@ -214,7 +263,7 @@ const RhythmGame = () => {
   const generateDemoNotes = (bpm) => {
     // console.log("Generating demo notes with BPM:", bpm);
     const beatTime = 60 / bpm; // Time for one beat in seconds
-    const noteSpeed = 2.8; // Similar to original game
+    // const noteSpeed = 2.8; // Similar to original game
     
     const t1 = [];
     const t2 = [];
@@ -242,41 +291,40 @@ const RhythmGame = () => {
   // Reset game state for a new game - with explicit state updates
   const resetGameState = () => {
     console.log("Resetting game state...");
-    
     // Reset all game state values with direct assignments
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
     setRating('READY');
-    // setFever(1);
-    // setFeverGauge(0);
     setComboEffect(0);
     setMissAnim(0);
     setLastCombo(0);
     
-    // Force React to process these state updates by using a small timeout
-    setTimeout(() => {
-      console.log("Game state after reset:");
-      console.log({
-        score: 0,
-        combo: 0,
-        maxCombo: 0,
-        rating: 'READY',
-        // fever: 1,
-        // feverGauge: 0
-      });
-    }, 0);
+    setPerfectCount(0);
+    setGreatCount(0);
+    setGoodCount(0);
+    setBadCount(0);
+    setWorstCount(0);
+    setMissCount(0);
   };
+
+  useEffect(() => {
+    if (gameState === 'ingame' && score === 0 && combo === 0) {
+      console.log("Game State after rest:");
+      debugState();
+    }
+  }, [gameState, score, combo]);
   
   // Start the game loop
   const startGame = () => {
-    debugState();
+    // debugState();
     setGameState('ingame');
     resetGameState();
 
-    
     gameStartTimeRef.current = performance.now() / 1000;
     lastDebugTimeRef.current = gameStartTimeRef.current;
+    console.log("Game start time:", gameStartTimeRef.current);
+    console.log("Song start time:", songStartTimeRef.current);
     
     // Start the game loop
     gameLoopRef.current = requestAnimationFrame(gameLoop);
@@ -307,87 +355,69 @@ const RhythmGame = () => {
         }
       }
     }
-    
-    // console.log("Game started!");
   };
   
   // Main game loop
   const gameLoop = (timestamp) => {
     // console.log("GAME LOOP !!!")
     const currentTime = timestamp / 1000 - gameStartTimeRef.current;
-    
-    // Update note positions
-    updateNotes(currentTime);
-    
-    // Update visual effects
+
+    updateNotesAndCheckMisses(currentTime);
     updateEffects(currentTime);
-    
-    // Check for missed notes
-    checkMissedNotes(currentTime);
     
     // Debug every ~5 seconds
     if (Math.floor(currentTime) % 5 === 0 && Math.floor(currentTime) !== Math.floor(lastDebugTimeRef.current)) {
-      debugState();
+      console.log("Regular debugging...");
       lastDebugTimeRef.current = currentTime;
     }
     
     // Continue the game loop
-    gameLoopRef.current = requestAnimationFrame(gameLoop);
+    if (currentTime < songEndTimeRef.current) {
+      gameLoopRef.current = requestAnimationFrame(gameLoop);
+    } else {
+      setGameState('result');
+      console.log("Game ended!");
+    }
   };
-  
-  // Update note positions based on current time
-  const updateNotes = (currentTime) => {
-    // Only update note positions if game is running
-    // console.log("Updating notes...");
-    // if (gameState !== 'ingame') return;
-    // console.log("Current state", gameState);
 
-    
-    const baseSpeed = 2.8; // Base speed from original game
+  const updateNotesAndCheckMisses = (currentTime) => {
+    const baseSpeed = 1;
     const rateLine = 600;
-    
-    setNotes(prev => {
-      // Skip update if no notes (optimization)
-      if (prev.t1.length === 0 && prev.t2.length === 0 && 
-          prev.t3.length === 0 && prev.t4.length === 0) {
-        return prev;
-      }
-      
-      const newNotes = {
-        t1: prev.t1.map(note => ({
-          ...note,
-          y: rateLine + (currentTime - note.time) * 350 * baseSpeed * (note.speed || 1.0)
-        })),
-        t2: prev.t2.map(note => ({
-          ...note,
-          y: rateLine + (currentTime - note.time) * 350 * baseSpeed * (note.speed || 1.0)
-        })),
-        t3: prev.t3.map(note => ({
-          ...note,
-          y: rateLine + (currentTime - note.time) * 350 * baseSpeed * (note.speed || 1.0)
-        })),
-        t4: prev.t4.map(note => ({
-          ...note,
-          y: rateLine + (currentTime - note.time) * 350 * baseSpeed * (note.speed || 1.0)
-        }))
-      };
+    const missThreshold = 650;
+    const missMaxThreshold = 700;
 
-      // Debug: log the position of the first note in each track if it exists
-      // if (prev.t1.length > 0 || prev.t2.length > 0 || prev.t3.length > 0 || prev.t4.length > 0) {
-      //   // Only log occasionally to not flood the console
-      //   if (Math.random() < 0.005) {
-      //     console.log("Note positions:", 
-      //       prev.t1.length > 0 ? Math.round(newNotes.t1[0].y) : "No t1 notes",
-      //       prev.t2.length > 0 ? Math.round(newNotes.t2[0].y) : "No t2 notes",
-      //       prev.t3.length > 0 ? Math.round(newNotes.t3[0].y) : "No t3 notes", 
-      //       prev.t4.length > 0 ? Math.round(newNotes.t4[0].y) : "No t4 notes"
-      //     );
-      //   }
-      // }
+    let missOccurred = false;
+    const notesRefCurrent = notesRef.current;
+
+    ['t1', 't2', 't3', 't4'].forEach(trackKey => {
+      const trackNotes = notesRefCurrent[trackKey];
       
-      return newNotes;
+      if (trackNotes.length === 0) return;
+
+      let writeIndex = 0;
+      const trackLength = trackNotes.length;
+
+      for (let i = 0; i < trackLength; i++) {
+        const note = trackNotes[i];
+        const newY = rateLine + (currentTime - note.time) * 350 * baseSpeed * (note.speed || 1.0);
+
+        if (newY > missThreshold && newY < missMaxThreshold) {
+          missOccurred = true;
+        } else if (newY >= missMaxThreshold) {
+        } else {
+          note.y = newY;
+          trackNotes[writeIndex++] = note;
+        }
+      }
+      if (writeIndex < trackLength) {
+        trackNotes.length = writeIndex;
+      }
     });
-  };
+
+    if (missOccurred) {
+      handleMiss();
+    }
+  }
   
   // Update visual effects
   const updateEffects = (currentTime) => {
@@ -407,18 +437,6 @@ const RhythmGame = () => {
       setMissAnim(prev => Math.max(0, prev - 0.05));
     }
     
-    // Update fever animation
-    // if (feverGauge >= 128) {
-    //   setFeverGauge(0);
-    //   setFever(prev => Math.min(5, prev + 1));
-    //   setFeverAnim(1);
-      
-    //   // Reset fever animation after 2 seconds
-    //   setTimeout(() => {
-    //     setFeverAnim(0);
-    //   }, 2000);
-    // }
-    
     // Update key effect animations
     setEffectAnimations(prev => {
       return prev.map(anim => {
@@ -430,63 +448,10 @@ const RhythmGame = () => {
     });
   };
   
-  // Check for missed notes
-  const checkMissedNotes = (currentTime) => {
-    // Check if any notes have passed the hit line
-    const missThreshold = 650; // Position of the hit line + some leeway
-    
-    setNotes(prev => {
-      // Skip check if no notes (optimization)
-      if (prev.t1.length === 0 && prev.t2.length === 0 && 
-          prev.t3.length === 0 && prev.t4.length === 0) {
-        return prev;
-      }
-      
-      let missOccurred = false;
-      
-      const newNotes = {
-        t1: prev.t1.filter(note => {
-          if (note.y > missThreshold) {
-            // Register a miss
-            missOccurred = true;
-            return false;
-          }
-          return true;
-        }),
-        t2: prev.t2.filter(note => {
-          if (note.y > missThreshold) {
-            missOccurred = true;
-            return false;
-          }
-          return true;
-        }),
-        t3: prev.t3.filter(note => {
-          if (note.y > missThreshold) {
-            missOccurred = true;
-            return false;
-          }
-          return true;
-        }),
-        t4: prev.t4.filter(note => {
-          if (note.y > missThreshold) {
-            missOccurred = true;
-            return false;
-          }
-          return true;
-        })
-      };
-      
-      // Only call handleMiss once if any misses occurred
-      if (missOccurred) {
-        handleMiss();
-      }
-      
-      return newNotes;
-    });
-  };
-  
   // Handle missed notes
   const handleMiss = () => {
+    console.log("Handle MISS");
+    setMissCount(prev => prev + 1);
     const currentCombo = combo; // Capture current combo value
     setLastCombo(currentCombo);
     setCombo(0);
@@ -498,17 +463,14 @@ const RhythmGame = () => {
     clearTimeout(ratingTimeoutRef.current);
     ratingTimeoutRef.current = setTimeout(() => {
       setRating('');
-    }, 1000);
-    
-    // console.log("MISS occurred! Combo reset from", currentCombo, "to 0");
+    }, 100);
   };
   
   // Check if a note was hit when a key is pressed
   const checkNoteHit = (trackIndex) => {
+    console.log("HIT!!!", trackIndex);
     // Get the current time
     const currentTime = performance.now() / 1000 - gameStartTimeRef.current;
-
-    // console.log("CURRENTTIME", currentTime)
     
     // Get the track array based on the index
     let trackNotes;
@@ -519,36 +481,19 @@ const RhythmGame = () => {
       case 3: trackNotes = 't4'; break;
       default: return;
     }
-
-    // console.log(notes);
     
     // Check if there are any notes in the hit range
-    if (notes[trackNotes].length > 0) {
-      const hitPosition = 600; // Position of the hit line
-      const firstNote = notes[trackNotes][0];
-      
-      // Calculate how far the note is from the perfect hit position
-      const noteY = firstNote.y;
-      const distanceFromHitLine = Math.abs(noteY - hitPosition);
-
-      // console.log("!!!!!", firstNote);
-      // console.log("Key pressed:", trackIndex, "Note Y:", noteY, "Distance:", distanceFromHitLine);
+    if (notesRef.current[trackNotes].length > 0) {
+      // const hitPosition = 600; // Position of the hit line
+      const firstNote = notesRef.current[trackNotes][0];
       
       // If the note is within the hit window, register a hit
       const timeDiff = Math.abs(currentTime - firstNote.time);
-      if (timeDiff < 1) { // Simplified hit detection
-        
-        // console.log("HIT DETECTED with distance:", timeDiff);
+      if (timeDiff < 0.3) { // Simplified hit detection
         
         // Evaluate the hit quality
         evaluateHit(timeDiff, trackIndex);
-        
-        // Remove the hit note
-        setNotes(prev => {
-          const newNotes = {...prev};
-          newNotes[trackNotes] = newNotes[trackNotes].slice(1);
-          return newNotes;
-        });
+        notesRef.current[trackNotes].shift();
         
         // Trigger effect animation
         setEffectAnimations(prev => {
@@ -562,8 +507,6 @@ const RhythmGame = () => {
   
   // Evaluate hit quality and update score
   const evaluateHit = (timeDiff, trackIndex) => {
-    // console.log("Evaluating hit with distance:", timeDiff);
-    
     // For the simplified version, we'll use pixel distance
     let hitRating = '';
     let scoreIncrease = 0;
@@ -571,77 +514,55 @@ const RhythmGame = () => {
     // let feverIncrease = 0;
     
     // Evaluate based on distance from hit line
-    if (timeDiff < 0.2) {
+    if (timeDiff < 0.025) {
       hitRating = 'PERFECT';
       scoreIncrease = Math.round(100000 / (noteCount || 100));
       comboIncrease = 1;
-      // feverIncrease = 1;
-    } else if (timeDiff < 0.4) {
+      setPerfectCount(prev => prev + 1);
+    } else if (timeDiff < 0.05) {
       hitRating = 'GREAT';
       scoreIncrease = Math.round((100000 / (noteCount || 100)) * 0.9);
       comboIncrease = 1;
-      // feverIncrease = 1;
-    } else if (timeDiff < 0.6) {
+      setGreatCount(prev => prev + 1);
+    } else if (timeDiff < 0.1) {
       hitRating = 'GOOD';
       scoreIncrease = Math.round((100000 / (noteCount || 100)) * 0.7);
       comboIncrease = 1;
-      // feverIncrease = 1;
-    } else if (timeDiff < 0.8) {
+      setGoodCount(prev => prev + 1);
+    } else if (timeDiff < 0.15) {
       hitRating = 'BAD';
       scoreIncrease = Math.round((100000 / (noteCount || 100)) * 0.4);
       comboIncrease = 0;
+      setBadCount(prev => prev + 1);
     } else {
       hitRating = 'WORST';
       scoreIncrease = Math.round((100000 / (noteCount || 100)) * 0.2);
       comboIncrease = 0;
+      setWorstCount(prev => prev + 1);
       setLastCombo(combo);
       setCombo(0);
       setMissAnim(1);
     }
     
     // Capture current state values to use in calculations
-    // const currentFever = fever;
     const currentCombo = combo;
     const currentMaxCombo = maxCombo;
     const currentScore = score;
     
-    // Log values before update for debugging
-    // console.log("State before update:", { 
-    //   score: currentScore, 
-    //   combo: currentCombo, 
-    //   maxCombo: currentMaxCombo, 
-    //   fever: currentFever 
-    // });
-    
-    // console.log("Score Update:", 
-    //   "Current Score:", currentScore, 
-    //   "Increase:", scoreIncrease, 
-    //   "Fever:", currentFever, 
-    //   "Total Add:", scoreIncrease * currentFever
-    // );
-    
     // Update score - use a direct update
-    // const newScore = currentScore + (scoreIncrease * currentFever);
     const newScore = currentScore + scoreIncrease;
     setScore(newScore);
     
     // Update combo if applicable
     if (comboIncrease > 0) {
-      // const newCombo = currentCombo + (comboIncrease * currentFever);
       const newCombo = currentCombo + comboIncrease;
-      // console.log("Combo Update:", "Current:", currentCombo, "New:", newCombo);
       setCombo(newCombo);
       
       // Update max combo if needed
       if (newCombo > currentMaxCombo) {
-        // console.log("New Max Combo:", newCombo);
         setMaxCombo(newCombo);
       }
     }
-    
-    // Update fever gauge
-    // const newFeverGauge = feverGauge + feverIncrease;
-    // setFeverGauge(newFeverGauge);
     
     // Update rating
     setRating(hitRating);
@@ -653,15 +574,7 @@ const RhythmGame = () => {
     clearTimeout(ratingTimeoutRef.current);
     ratingTimeoutRef.current = setTimeout(() => {
       setRating('');
-    }, 1000);
-    
-    // Log complete update summary
-    // console.log("Hit evaluation complete:", {
-    //   rating: hitRating,
-    //   scoreIncrease: scoreIncrease * currentFever,
-    //   newScore: newScore,
-    //   newCombo: comboIncrease > 0 ? currentCombo + (comboIncrease * currentFever) : 0
-    // });
+    }, 100);
   };
   
   // Clean up resources when component unmounts
@@ -690,24 +603,34 @@ const RhythmGame = () => {
       progress={loadingProgress} 
       songName={songData[currentSong].name} 
     />;
-  } else {
+  } else if (gameState === 'ingame') {
     return <GameScreen 
-      notes={notes}
+      notes={notesRef.current}
       score={score}
       combo={combo}
       maxCombo={maxCombo}
       rating={rating}
-      // fever={fever}
-      // feverGauge={feverGauge}
       keyStates={keyStates}
       keyAnimations={keyAnimations}
       effectAnimations={effectAnimations}
       comboEffect={comboEffect}
       missAnim={missAnim}
       lastCombo={lastCombo}
-      // feverAnim={feverAnim}
       songName={songData[currentSong].name}
       bpm={songData[currentSong].bpm}
+    />;
+  } else {
+    return <ResultScreen 
+      score={score}
+      maxCombo={maxCombo}
+      rating={rating}
+      songName={songData[currentSong].name}
+      perfectCount={perfectCount}
+      greatCount={greatCount}
+      goodCount={goodCount}
+      badCount={badCount}
+      worstCount={worstCount}
+      missCount={missCount}
     />;
   }
 };
