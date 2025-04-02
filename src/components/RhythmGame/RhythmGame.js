@@ -5,7 +5,13 @@ import LobbyScreen from '../screens/LobbyScreen';
 import LoadingScreen from '../screens/LoadingScreen';
 import GameScreen from '../screens/GameScreen';
 import ResultScreen from '../screens/ResultScreen';
+
+import AudioAnalyzer from '../AudioAnalyzer/AudioAnalyzer';
 import './RhythmGame.css';
+import NoteDistributor from '../AudioAnalyzer/NoteDistributor';
+
+import { PutObjectCommand, GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { getS3Client, awsConfig } from '../../awsConfig/awsConfig';
 
 // Main App Component
 const RhythmGame = () => {
@@ -15,7 +21,6 @@ const RhythmGame = () => {
   const [combo, setCombo] = useState(0);
   const [maxCombo, setMaxCombo] = useState(0);
   const [rating, setRating] = useState('READY');
-  // const [notes, setNotes] = useState({ t1: [], t2: [], t3: [], t4: [] });
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [keyStates, setKeyStates] = useState([false, false, false, false]);
   const [keyAnimations, setKeyAnimations] = useState([0, 0, 0, 0]);
@@ -30,6 +35,18 @@ const RhythmGame = () => {
   const [badCount, setBadCount] = useState(0);
   const [worstCount, setWorstCount] = useState(0);
   const [missCount, setMissCount] = useState(0);
+
+  const [audioFile, setAudioFile] = useState(null);
+  const [notesFile, setNotesFile] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [stats, setStats] = useState(null);
+
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [s3AudioKey, setS3AudioKey] = useState(null);
+  const [s3NotesKey, setS3NotesKey] = useState(null);
   
   const songRef = useRef(null);
   const gameLoopRef = useRef(null);
@@ -47,6 +64,15 @@ const RhythmGame = () => {
   const maxComboRef = useRef(maxCombo);
   const ratingRef = useRef(rating);
   const notesRef = useRef({ t1: [], t2: [], t3: [], t4: [] });
+
+  const analyzerRef = useRef(null);
+  const audioRef = useRef(null);
+
+  const songNameRef = useRef(null);
+  const noteNameRef = useRef(null);
+
+  const initializedRef = useRef(null);
+  const [songList, setSongList] = useState([{ name: "Upload Your Own Song"}]);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -70,27 +96,17 @@ const RhythmGame = () => {
   
   // Debug helper to track state
   const debugState = () => {
-    console.log("Current Game State (DEBUG):", {
-      gameState: gameStateRef.current,
-      score: scoreRef.current,
-      combo: comboRef.current,
-      maxCombo: maxComboRef.current,
-      rating: ratingRef.current,
-      notesRemaining: {
-        t1: notesRef.current.t1.length,
-        t2: notesRef.current.t2.length,
-        t3: notesRef.current.t3.length,
-        t4: notesRef.current.t4.length,
-      }
-    });
   };
   
   // Song data similar to the original
-  const songData = [
-    { name: "pupa", lines: 911, bpm: 202, noteFile: "pupa.txt", audioFile: "pupa.mp3", background: "bg_pupa.jpg" },
-    { name: "light it up", lines: 911, bpm: 175, noteFile: "light it up.txt", audioFile: "light it up.mp3", background: "bg_light_it_up.jpg" },
-    { name: "nacreous snowmelt", lines: 911, bpm: 101, noteFile: "nacreous snowmelt.txt", audioFile: "nacreous snowmelt.mp3", background: "bg_nacreous snowmelt.jpg" }
-  ];
+  // const songData = [
+  //   { name: "Upload Your Own Song"},
+  //   // { name: "거리에서", lines: 911, bpm: 202, noteFile: "성시경 - 거리에서.json", audioFile: "성시경 - 거리에서.mp3", background: "bg_pupa.jpg" },
+  //   // { name: "Don't Look Back in Anger", lines: 911, bpm: 175, noteFile: "Oasis - Dont Look Back In Anger.json", audioFile: "Oasis - Dont Look Back In Anger.mp3", background: "bg_light_it_up.jpg" },
+  //   // { name: "nacreous snowmelt", lines: 911, bpm: 101, noteFile: "nacreous snowmelt.txt", audioFile: "nacreous snowmelt.mp3", background: "bg_nacreous snowmelt.jpg" }
+
+  // ];
+  let songData = songList;
 
   // Key to track mapping
   const keyMapping = {
@@ -99,6 +115,114 @@ const RhythmGame = () => {
     'j': 2,
     'k': 3 
   };
+
+  useEffect(() => {
+    console.log("!!!Initialize!!!");
+
+    const controller = new AbortController();
+
+    if (initializedRef.current) {
+      console.log("Already initialized");
+      return;
+    }
+
+    console.log("initializing first time!!!!!");
+    initializedRef.current = 1;
+
+    initialFetchSongsList();
+
+    return () => {
+      controller.abort();
+    }
+
+  }, []);
+
+  const initialFetchSongsList = async () => {
+    try {
+      const s3Client = getS3Client();
+
+      const command = new ListObjectsV2Command({
+        Bucket: awsConfig.bucketName,
+        Prefix: 'user_uploads/',
+        Delimiter: '/'
+      });
+
+      const response = await s3Client.send(command);
+
+      if (response.KeyCount > 0) {
+        const audios = []
+        const notes = []
+
+        response.Contents.forEach(item => {
+          if (item.Key.endsWith('.mp3')) {
+            audios.push(item);
+          } else if (item.Key.endsWith('.json')) {
+            notes.push(item);
+          }
+        })
+
+        const songs = audios.map(audioFile => {
+          const baseName = audioFile.Key.replace(/\.[^.]+$/, '');
+          const noteFile = notes.find(note => note.Key.startsWith(baseName));
+
+          const songName = audioFile.Key.replace('user_uploads/', '').replace('.mp3', '');
+
+          return {
+            id: audioFile.Key,
+            name: songName,
+            audioKey: audioFile.Key,
+            notesKey: noteFile ? noteFile.Key : null,
+            lastModified: audioFile.LastModified
+          }
+        })
+
+        const validSongs = songs.filter(song => song.notesKey);
+        validSongs.sort((a, b) => b.lastModified - a.lastModified);
+
+        validSongs.map(song => {
+          const songDataToPush = {
+            "name": song.name,
+            "lines": 200,
+            "bpm": 120,
+            "noteFile": song.notesKey.replace('user_uploads/', ''),
+            "audioFile": song.audioKey.replace('user_uploads/', ''),
+          };
+          // songData.push(songDataToPush);
+          setSongList(prevSongList => [...prevSongList, songDataToPush]);
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching songs list:", error);
+    }
+  }
+
+  useEffect(() => {
+    console.log("UPDATE REQUIRED!!!");
+  }, [songList])
+
+  useEffect(() => {
+    const analyzer = new AudioAnalyzer();
+
+    analyzer.setCallbacks({
+      onProgress: (value) => {
+        setProgress(value);
+      },
+      onComplete: (result) => {
+        notesRef.current = result;
+        setIsAnalyzing(false);
+
+        const statistics = analyzer.generateStats(result);
+        setStats(statistics);
+      },
+      onError: (error) => {
+        setIsAnalyzing(false);
+      }
+    });
+
+    analyzerRef.current = analyzer;
+
+    return () => {};
+  }, [])
 
   // Handle key press events
   useEffect(() => {
@@ -130,11 +254,15 @@ const RhythmGame = () => {
         if (key === 'arrowup') {
           setCurrentSong(prev => Math.max(0, prev - 1));
         } else if (key === 'arrowdown') {
-          setCurrentSong(prev => Math.min(songData.length - 1, prev + 1));
+          setCurrentSong(prev => Math.min(songList.length - 1, prev + 1));
         } else if (key === ' ') {
           // Start loading the song
-          setGameState('loading');
-          loadSong(songData[currentSong].noteFile, songData[currentSong].audioFile);
+          if (currentSong != 0) {
+            setGameState('loading');
+            loadSong(songList[currentSong].noteFile, songList[currentSong].audioFile)
+          } else {
+            console.log("Upload your own song");
+          }
         }
       }
       
@@ -176,7 +304,220 @@ const RhythmGame = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, currentSong, combo, score, maxCombo]); // Added dependencies to ensure latest state values
+  }, [gameState, currentSong, combo, score, maxCombo, songList]); // Added dependencies to ensure latest state values
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setAudioFile(file);
+    notesRef.current = null;
+    setStats(null);
+
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
+    const newUrl = URL.createObjectURL(file);
+    setAudioUrl(newUrl);
+
+    try {
+      const uniqueFileName = `user_uploads/${file.name}`;
+
+      const s3Client = getS3Client();
+
+      const fileContent = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsArrayBuffer(file);
+      });
+
+      const uploadParams = {
+        Bucket: awsConfig.bucketName,
+        Key: uniqueFileName,
+        Body: new Uint8Array(fileContent),
+        ContentType: file.type,
+      };
+
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      const command = new PutObjectCommand(uploadParams);
+      const response = await s3Client.send(command);
+
+      setS3AudioKey(uniqueFileName);
+      setUploadProgress(100);
+      setIsUploading(false);
+
+      console.log('Audio uploaded successfully to S3', response, uniqueFileName);
+
+      songNameRef.current = file.name.replace(".mp3", "");
+
+    } catch (error) {
+      console.error('Error uploading file to S3:', error);
+      setIsUploading(false);
+    }
+  };
+
+  const uploadNotesToS3 = async (notesData) => {
+    if (!s3AudioKey) return;
+
+    try {
+      const notesJson = JSON.stringify(notesData);
+      const blob = new Blob([notesJson], { type: 'application/json' });
+
+      const notesKey = s3AudioKey.replace(/\.[^.]+$/, '.json');
+
+      const s3Client = getS3Client();
+
+      const fileContent = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsArrayBuffer(blob);
+      });
+
+
+      const uploadParams = {
+        Bucket: awsConfig.bucketName,
+        Key: notesKey,
+        Body: new Uint8Array(fileContent),
+        ContentType: 'application/json',
+      };
+
+      const command = new PutObjectCommand(uploadParams);
+      const response = await s3Client.send(command);
+
+      setS3NotesKey(notesKey);
+
+      console.log("Notes uploaded successfully to S3", response, notesKey);
+
+      noteNameRef.current = songNameRef.current;
+
+      setSongList(prevSongList => [
+        ...prevSongList,
+        {
+          "name": songNameRef.current,
+          "lines": 200,
+          "bpm": 120,
+          "noteFile": `${noteNameRef.current}.json`,
+          "audioFile": `${songNameRef.current}.mp3`
+        }
+      ]);
+
+      songNameRef.current = null;
+      noteNameRef.current = null;
+
+    } catch (error) {
+      console.error('Error uploading notes to S3:', error);
+    }
+  }
+
+  const loadSongFromS3 = async (audioKey, notesKey) => {
+    try {
+      setLoadingProgress(0);
+
+      const s3Client = getS3Client();
+
+      const songName = audioKey;
+      console.log("Song name:", songName);
+
+      const notesCommand = new GetObjectCommand({
+        Bucket: awsConfig.bucketName,
+        Key: notesKey,
+      });
+
+      const notesResponse = await s3Client.send(notesCommand);
+      const notesStream = notesResponse.Body;
+
+      const notesContent = await new Response(notesStream).text();
+      console.log("Note file loaded successfully");
+
+      setLoadingProgress(40);
+
+      const audioCommand = new GetObjectCommand({
+        Bucket: awsConfig.bucketName,
+        Key: audioKey,
+      });
+
+      const audioResponse = await s3Client.send(audioCommand);
+      const audioStream = audioResponse.Body;
+
+      const audioBlob = await new Response(audioStream).blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const audio = new Audio(audioUrl);
+
+      audio.addEventListener('error', (e) => {
+        console.error("Audio loading error:", e);
+        setLoadingProgress(100);
+      });
+  
+      audio.addEventListener('canplaythrough', () => {
+        console.log("Audio loaded successfully from S3");
+        songRef.current = audio;
+        setLoadingProgress(80);
+      });
+
+      const audioDuration = await new Promise((resolve, reject) => {
+        audio.addEventListener('loadedmetadata', () => {
+          resolve(audio.duration);
+        });
+        audio.addEventListener('error', (e) => {
+          console.error("Audio loading error:", e);
+          reject(e);
+        });
+        audio.load();
+      });
+
+      songEndTimeRef.current = audioDuration;
+      setLoadingProgress(90);
+
+      const { noteStartTime, songStartTime, parsedNotes, totalNotes } = parseNoteFile(notesContent);
+
+      setLoadingProgress(100);
+
+      setTimeout(() => {
+        startGame();
+      }, 1000);
+
+    } catch (error) {
+      console.error("Error loading song from S3: ", error);
+      setLoadingProgress(100);
+      const generateNotes = generateDemoNotes(120);
+      notesRef.current = generateNotes;
+      setNoteCount(100); // Set a reasonable default note count
+      setTimeout(() => {
+        startGame();
+      }, 500);
+    }
+  }
+
+  useEffect(() => {
+    if (audioFile) {
+      startAnalysis();
+    }
+  }, [audioFile]);
+
+  const startAnalysis = async () => {
+    if (!audioFile || isAnalyzing) return;
+
+    setIsAnalyzing(true);
+    
+    try {
+      const distributor = new NoteDistributor();
+      const tempDictionary = await analyzerRef.current.analyzeAudio(audioFile);
+      setNotesFile(distributor.rebalanceExistingNotes(tempDictionary));
+    } catch(error) {
+      console.error("Error during audio analysis:", error);
+    }
+  }
+
+  useEffect(() => {
+    if (notesFile) {
+      uploadNotesToS3(notesFile);
+    }
+  }, [notesFile]);
   
   // Load song data
   const loadSong = async (noteFile, audioFile) => {
@@ -222,7 +563,7 @@ const RhythmGame = () => {
         audio.load();
       });
       // songEndTimeRef.current = audioDuration;
-      songEndTimeRef.current = 8;
+      songEndTimeRef.current = 50;
       
       // Use progress indicator while parsing
       setLoadingProgress(10);
@@ -245,11 +586,11 @@ const RhythmGame = () => {
       // Give a small delay to show 100% before starting
       setTimeout(() => {
         startGame();
-      }, 500);
+      }, 1000);
       
     } catch (error) {
       console.error("Error loading song:", error);
-      const generatedNotes = generateDemoNotes(songData[currentSong].bpm);
+      const generatedNotes = generateDemoNotes(songList[currentSong].bpm);
       notesRef.current = generatedNotes;
       setNoteCount(100); // Set a reasonable default note count
       setLoadingProgress(100);
@@ -290,7 +631,6 @@ const RhythmGame = () => {
   
   // Reset game state for a new game - with explicit state updates
   const resetGameState = () => {
-    console.log("Resetting game state...");
     // Reset all game state values with direct assignments
     setScore(0);
     setCombo(0);
@@ -333,6 +673,7 @@ const RhythmGame = () => {
     if (songRef.current) {
       const now = performance.now() / 1000 - gameStartTimeRef.current;
       const delay = songStartTimeRef.current - now;
+      console.log("Delay before playing:", delay);
       
       if (delay > 0) {
         setTimeout(() => {
@@ -359,17 +700,16 @@ const RhythmGame = () => {
   
   // Main game loop
   const gameLoop = (timestamp) => {
-    // console.log("GAME LOOP !!!")
     const currentTime = timestamp / 1000 - gameStartTimeRef.current;
 
     updateNotesAndCheckMisses(currentTime);
     updateEffects(currentTime);
     
     // Debug every ~5 seconds
-    if (Math.floor(currentTime) % 5 === 0 && Math.floor(currentTime) !== Math.floor(lastDebugTimeRef.current)) {
-      console.log("Regular debugging...");
-      lastDebugTimeRef.current = currentTime;
-    }
+    // if (Math.floor(currentTime) % 5 === 0 && Math.floor(currentTime) !== Math.floor(lastDebugTimeRef.current)) {
+    //   console.log("Regular debugging...");
+    //   lastDebugTimeRef.current = currentTime;
+    // }
     
     // Continue the game loop
     if (currentTime < songEndTimeRef.current) {
@@ -385,6 +725,8 @@ const RhythmGame = () => {
     const rateLine = 600;
     const missThreshold = 650;
     const missMaxThreshold = 700;
+
+    // console.log("!!!!", notesRef.current);
 
     let missOccurred = false;
     const notesRefCurrent = notesRef.current;
@@ -450,7 +792,7 @@ const RhythmGame = () => {
   
   // Handle missed notes
   const handleMiss = () => {
-    console.log("Handle MISS");
+    // console.log("Handle MISS");
     setMissCount(prev => prev + 1);
     const currentCombo = combo; // Capture current combo value
     setLastCombo(currentCombo);
@@ -468,7 +810,7 @@ const RhythmGame = () => {
   
   // Check if a note was hit when a key is pressed
   const checkNoteHit = (trackIndex) => {
-    console.log("HIT!!!", trackIndex);
+    // console.log("HIT!!!", trackIndex);
     // Get the current time
     const currentTime = performance.now() / 1000 - gameStartTimeRef.current;
     
@@ -595,13 +937,18 @@ const RhythmGame = () => {
   // Render different game states
   if (gameState === 'lobby') {
     return <LobbyScreen 
-      songs={songData} 
-      currentSong={currentSong} 
+      songs={songList} 
+      currentSong={currentSong}
+      handleFileUpload={handleFileUpload}
+      isAnalyzing={isAnalyzing}
+      startAnalysis={startAnalysis}
+      audioFile={audioFile}
+      loadSongFromS3={loadSongFromS3}
     />;
   } else if (gameState === 'loading') {
     return <LoadingScreen 
       progress={loadingProgress} 
-      songName={songData[currentSong].name} 
+      songName={songList[currentSong].name} 
     />;
   } else if (gameState === 'ingame') {
     return <GameScreen 
@@ -616,14 +963,14 @@ const RhythmGame = () => {
       comboEffect={comboEffect}
       missAnim={missAnim}
       lastCombo={lastCombo}
-      songName={songData[currentSong].name}
-      bpm={songData[currentSong].bpm}
+      songName={songList[currentSong].name}
+      bpm={songList[currentSong].bpm}
     />;
   } else {
     return <ResultScreen 
       score={score}
       maxCombo={maxCombo}
-      songName={songData[currentSong].name}
+      songName={songList[currentSong].name}
       perfectCount={perfectCount}
       greatCount={greatCount}
       goodCount={goodCount}

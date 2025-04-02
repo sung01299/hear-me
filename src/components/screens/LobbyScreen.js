@@ -8,7 +8,7 @@ import '../RhythmGame/RhythmGame.css';
  * @param {Array} props.songs - List of available songs
  * @param {number} props.currentSong - Index of currently selected song
  */
-const LobbyScreen = ({ songs, currentSong }) => {
+const LobbyScreen = ({ songs, currentSong, handleFileUpload, isAnalyzing, startAnalysis, audioFile }) => {
   // Generate animated music notes
   const renderMusicNotes = () => {
     return Array(12).fill().map((_, index) => {
@@ -33,6 +33,8 @@ const LobbyScreen = ({ songs, currentSong }) => {
       );
     });
   };
+
+  // console.log("song:", songs);
 
   return (
     <div className="lobby-container">
@@ -66,30 +68,45 @@ const LobbyScreen = ({ songs, currentSong }) => {
                 key={index} 
                 className={`lobby-song-item ${index === currentSong ? 'selected' : ''}`}
               >
-                <div className="lobby-song-preview">
-                  <div className="lobby-song-album" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/assets/backgrounds/${song.background || 'default.jpg'})` }}>
-                    {index === currentSong && (
-                      <div className="lobby-song-play-icon">
-                        <Play size={24} />
+                {index === 0 
+                  ? <div className="lobby-song-new-indicator">
+                      <div className="lobby-song-name">
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          onChange={handleFileUpload}
+                          disabled={isAnalyzing}
+                        />
                       </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="lobby-song-info">
-                  <div className="lobby-song-name">{song.name}</div>
-                  <div className="lobby-song-details">
-                    <div className="lobby-song-bpm">
-                      <BarChart2 size={14} />
-                      <span>BPM: {song.bpm}</span>
                     </div>
-                    <div className="lobby-song-duration">
-                      <Clock size={14} />
-                      <span>Notes: {song.lines}</span>
+                  : (
+                    <div className="lobby-song-info">
+                      <div className="lobby-song-preview">
+                        <div className="lobby-song-album" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/assets/backgrounds/${song.background || 'default.jpg'})` }}>
+                          {index === currentSong && (
+                            <div className="lobby-song-play-icon">
+                              <Play size={24} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="lobby-song-info">
+                        <div className="lobby-song-name">{song.name}</div>
+                        <div className="lobby-song-details">
+                          <div className="lobby-song-bpm">
+                            <BarChart2 size={14} />
+                            <span>BPM: {song.bpm}</span>
+                          </div>
+                          <div className="lobby-song-duration">
+                            <Clock size={14} />
+                            <span>Notes: {song.lines}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
+                  )
+                }        
                 {index === currentSong && (
                   <div className="lobby-song-selected-indicator"></div>
                 )}
