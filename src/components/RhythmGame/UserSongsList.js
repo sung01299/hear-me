@@ -18,7 +18,6 @@ const UserSongsList = ({ onSelectSong }) => {
     try {
       const s3Client = getS3Client();
       
-      // List objects in the user_uploads folder
       const command = new ListObjectsV2Command({
         Bucket: awsConfig.bucketName,
         Prefix: 'user_uploads/',
@@ -27,24 +26,20 @@ const UserSongsList = ({ onSelectSong }) => {
       
       const response = await s3Client.send(command);
       
-      // Process the response to extract song information
       const audioFiles = response.Contents.filter(item => 
         item.Key.endsWith('.mp3') || item.Key.endsWith('.wav')
       );
       
-      // Get corresponding note files
       const noteFiles = response.Contents.filter(item => 
         item.Key.endsWith('.json')
       );
       
-      // Create song entries with both files
       const songs = audioFiles.map(audioFile => {
         const baseName = audioFile.Key.replace(/\.[^.]+$/, '');
         const noteFile = noteFiles.find(note => 
           note.Key.startsWith(baseName)
         );
         
-        // Extract song name from the key
         const songName = audioFile.Key.split('/').pop().split('-').slice(1).join('-').replace(/\.[^.]+$/, '');
         
         return {
@@ -56,10 +51,8 @@ const UserSongsList = ({ onSelectSong }) => {
         };
       });
       
-      // Filter out songs without note files
       const validSongs = songs.filter(song => song.notesKey);
       
-      // Sort by most recently added
       validSongs.sort((a, b) => b.lastModified - a.lastModified);
       
       setUserSongs(validSongs);

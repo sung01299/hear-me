@@ -31,31 +31,25 @@ const GameScreen = ({
     };
   }, []);
   
-  // Draw the game screen
   useEffect(() => {
     if (!canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     
-    // Set canvas size to match container
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw background
     drawBackground(ctx, canvas);
     
-    // Draw tracks
     const trackColors = ['#FF5599', '#55FFBB', '#5599FF', '#FFDD55'];
     const startX = (canvas.width - (trackWidth * 4 + trackGap * 3)) / 2;
     
     for (let i = 0; i < 4; i++) {
       const trackX = startX + i * (trackWidth + trackGap);
       
-      // Draw track background with gradient
       const trackGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       trackGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
       trackGradient.addColorStop(0.9, `rgba(${i === 0 ? '255, 85, 153' : i === 1 ? '85, 255, 187' : i === 2 ? '85, 153, 255' : '255, 221, 85'}, 0.2)`);
@@ -64,7 +58,6 @@ const GameScreen = ({
       ctx.fillStyle = trackGradient;
       ctx.fillRect(trackX, 0, trackWidth, canvas.height);
       
-      // Draw track border
       ctx.strokeStyle = `rgba(255, 255, 255, 0.1)`;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -74,7 +67,6 @@ const GameScreen = ({
       ctx.lineTo(trackX + trackWidth, canvas.height);
       ctx.stroke();
       
-      // Draw hit line
       const hitLineGradient = ctx.createLinearGradient(trackX, hitLineY, trackX + trackWidth, hitLineY);
       hitLineGradient.addColorStop(0, keyStates[i] ? trackColors[i] : `rgba(255, 255, 255, 0.6)`);
       hitLineGradient.addColorStop(0.5, keyStates[i] ? '#FFFFFF' : `rgba(255, 255, 255, 0.8)`);
@@ -83,7 +75,6 @@ const GameScreen = ({
       ctx.fillStyle = hitLineGradient;
       ctx.fillRect(trackX, hitLineY, trackWidth, 2);
       
-      // Add hit line glow effect
       if (keyStates[i]) {
         ctx.shadowBlur = 10;
         ctx.shadowColor = trackColors[i];
@@ -91,17 +82,14 @@ const GameScreen = ({
         ctx.shadowBlur = 0;
       }
       
-      // Draw key effect
       if (effectAnimations[i] < 5) {
         const effectSize = 50 * (1 - effectAnimations[i] / 5);
         
-        // Inner glow
         ctx.fillStyle = `rgba(${i === 0 ? '255, 85, 153' : i === 1 ? '85, 255, 187' : i === 2 ? '85, 153, 255' : '255, 221, 85'}, ${0.8 - effectAnimations[i] / 5})`;
         ctx.beginPath();
         ctx.arc(trackX + trackWidth / 2, hitLineY, effectSize * 0.5, 0, Math.PI * 2);
         ctx.fill();
         
-        // Outer ripple
         ctx.strokeStyle = `rgba(${i === 0 ? '255, 85, 153' : i === 1 ? '85, 255, 187' : i === 2 ? '85, 153, 255' : '255, 221, 85'}, ${0.6 - effectAnimations[i] / 5})`;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -109,20 +97,17 @@ const GameScreen = ({
         ctx.stroke();
       }
       
-      // Draw notes for this track
       const trackKey = 't' + (i + 1);
       
       if (notes[trackKey]) {
         for (const note of notes[trackKey]) {
           if (note.y >= 0 && note.y <= canvas.height) {
-            // Note body with gradient
             const noteGradient = ctx.createLinearGradient(trackX, note.y - noteHeight / 2, trackX, note.y + noteHeight / 2);
             noteGradient.addColorStop(0, trackColors[i]);
             noteGradient.addColorStop(1, `rgba(${i === 0 ? '255, 85, 153' : i === 1 ? '85, 255, 187' : i === 2 ? '85, 153, 255' : '255, 221, 85'}, 0.7)`);
             
             ctx.fillStyle = noteGradient;
             
-            // Draw rounded rectangle for the note
             const cornerRadius = 4;
             ctx.beginPath();
             ctx.moveTo(trackX + cornerRadius, note.y - noteHeight / 2);
@@ -137,13 +122,11 @@ const GameScreen = ({
             ctx.closePath();
             ctx.fill();
             
-            // Add glow effect to notes
             ctx.shadowBlur = 8;
             ctx.shadowColor = trackColors[i];
             ctx.fill();
             ctx.shadowBlur = 0;
             
-            // Add highlight to the top of the note
             ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.beginPath();
             ctx.moveTo(trackX + cornerRadius, note.y - noteHeight / 2);
@@ -160,7 +143,6 @@ const GameScreen = ({
       }
     }
     
-    // Draw rating
     if (rating) {
       let ratingColor;
       switch (rating) {
@@ -176,7 +158,6 @@ const GameScreen = ({
       ctx.font = 'bold 48px Ubuntu';
       ctx.textAlign = 'center';
       
-      // Draw rating with glow effect
       ctx.shadowBlur = 15;
       ctx.shadowColor = ratingColor;
       ctx.fillStyle = ratingColor;
@@ -186,7 +167,6 @@ const GameScreen = ({
     
   }, [notes, score, combo, rating, keyStates, effectAnimations, keyAnimations, missAnim, bgImage]);
   
-  // Draw background elements
   const drawBackground = (ctx, canvas) => {
 
     if (bgImage) {
@@ -199,11 +179,9 @@ const GameScreen = ({
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Draw grid pattern
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     
-    // Vertical grid lines
     for (let x = 0; x < canvas.width; x += 20) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -211,7 +189,6 @@ const GameScreen = ({
       ctx.stroke();
     }
     
-    // Horizontal grid lines
     for (let y = 0; y < canvas.height; y += 20) {
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -219,7 +196,6 @@ const GameScreen = ({
       ctx.stroke();
     }
     
-    // Draw a radial gradient for ambient glow
     const gradient = ctx.createRadialGradient(
       canvas.width / 2, canvas.height / 2, 0,
       canvas.width / 2, canvas.height / 2, canvas.height
@@ -231,7 +207,6 @@ const GameScreen = ({
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw hit line area highlight
     const hitAreaGradient = ctx.createLinearGradient(0, hitLineY - 50, 0, hitLineY + 50);
     hitAreaGradient.addColorStop(0, 'rgba(139, 92, 246, 0)');
     hitAreaGradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.1)');
@@ -261,7 +236,6 @@ const GameScreen = ({
           <div className="max-combo">Max: {maxCombo}</div>
         </div>
         <div className={`rating ${rating.toLowerCase()}`} style={{ opacity: rating ? 1 : 0 }}>
-          {/* {rating} */}
         </div>
       </div>
       

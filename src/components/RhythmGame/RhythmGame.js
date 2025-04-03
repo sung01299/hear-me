@@ -16,9 +16,8 @@ import '../aesthetics/RhythmGameEffects.css';
 import '../aesthetics/EnhancedScreenStyles.css';
 
 
-// Main App Component
 const RhythmGame = () => {
-  const [gameState, setGameState] = useState('lobby'); // lobby, loading, ingame
+  const [gameState, setGameState] = useState('lobby');
   const [currentSong, setCurrentSong] = useState(0);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -42,14 +41,9 @@ const RhythmGame = () => {
   const [audioFile, setAudioFile] = useState(null);
   const [notesFile, setNotesFile] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  // const [progress, setProgress] = useState(0);
   const [audioUrl, setAudioUrl] = useState(null);
-  // const [stats, setStats] = useState(null);
 
-  // const [isUploading, setIsUploading] = useState(false);
-  // const [uploadProgress, setUploadProgress] = useState(0);
   const [s3AudioKey, setS3AudioKey] = useState(null);
-  // const [s3NotesKey, setS3NotesKey] = useState(null);
   
   const songRef = useRef(null);
   const gameLoopRef = useRef(null);
@@ -69,7 +63,6 @@ const RhythmGame = () => {
   const notesRef = useRef({ t1: [], t2: [], t3: [], t4: [] });
 
   const analyzerRef = useRef(null);
-  // const audioRef = useRef(null);
 
   const songNameRef = useRef(null);
   const noteNameRef = useRef(null);
@@ -97,11 +90,9 @@ const RhythmGame = () => {
     ratingRef.current = rating;
   }, [rating]);
   
-  // Debug helper to track state
   const debugState = () => {
   };
   
-  // Key to track mapping
   const keyMapping = {
     'd': 0,
     'f': 1,
@@ -110,16 +101,12 @@ const RhythmGame = () => {
   };
 
   useEffect(() => {
-    console.log("!!!Initialize!!!");
-
     const controller = new AbortController();
 
     if (initializedRef.current) {
-      console.log("Already initialized");
       return;
     }
 
-    console.log("initializing first time!!!!!");
     initializedRef.current = 1;
 
     initialFetchSongsList();
@@ -178,7 +165,6 @@ const RhythmGame = () => {
             "noteFile": song.notesKey.replace('user_uploads/', ''),
             "audioFile": song.audioKey.replace('user_uploads/', ''),
           };
-          // songData.push(songDataToPush);
           setSongList(prevSongList => [...prevSongList, songDataToPush]);
         })
       }
@@ -188,7 +174,6 @@ const RhythmGame = () => {
   }
 
   useEffect(() => {
-    console.log("UPDATE REQUIRED!!!");
   }, [songList])
 
   useEffect(() => {
@@ -196,14 +181,11 @@ const RhythmGame = () => {
 
     analyzer.setCallbacks({
       onProgress: (value) => {
-        // setProgress(value);
       },
       onComplete: (result) => {
         notesRef.current = result;
         setIsAnalyzing(false);
 
-        // const statistics = analyzer.generateStats(result);
-        // setStats(statistics);
       },
       onError: (error) => {
         setIsAnalyzing(false);
@@ -215,53 +197,43 @@ const RhythmGame = () => {
     return () => {};
   }, [])
 
-  // Handle key press events
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
       if (key in keyMapping && gameState === 'ingame') {
         const trackIndex = keyMapping[key];
         
-        // Update key states for visual effect
         setKeyStates(prev => {
           const newState = [...prev];
           newState[trackIndex] = true;
           return newState;
         });
         
-        // Start key animation
         setKeyAnimations(prev => {
           const newAnims = [...prev];
-          newAnims[trackIndex] = 1; // Start animation
+          newAnims[trackIndex] = 1;
           return newAnims;
         });
         
-        // Check for note hits
         checkNoteHit(trackIndex);
       }
       
-      // Lobby navigation
       if (gameState === 'lobby') {
         if (key === 'arrowup') {
           setCurrentSong(prev => Math.max(0, prev - 1));
         } else if (key === 'arrowdown') {
           setCurrentSong(prev => Math.min(songList.length - 1, prev + 1));
         } else if (key === ' ') {
-          // Start loading the song
           if (currentSong !== 0) {
             setGameState('loading');
-            console.log("SONG LIST", songList);
             loadSongAndNotesFromS3(songList[currentSong].audioFile, songList[currentSong].noteFile);
           } else {
-            console.log("Upload your own song");
           }
         }
       }
       
-      // Result screen navigation
       if (gameState === 'result') {
         if (key === ' ') {
-          // Reset to lobby
           setGameState('lobby');
           setCurrentSong(0);
         }
@@ -273,14 +245,12 @@ const RhythmGame = () => {
       if (key in keyMapping) {
         const trackIndex = keyMapping[key];
         
-        // Update key states
         setKeyStates(prev => {
           const newState = [...prev];
           newState[trackIndex] = false;
           return newState;
         });
         
-        // Reset key animation
         setKeyAnimations(prev => {
           const newAnims = [...prev];
           newAnims[trackIndex] = 0;
@@ -296,7 +266,7 @@ const RhythmGame = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, currentSong, combo, score, maxCombo, songList]); // Added dependencies to ensure latest state values
+  }, [gameState, currentSong, combo, score, maxCombo, songList]);
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -330,23 +300,15 @@ const RhythmGame = () => {
         ContentType: file.type,
       };
 
-      // setIsUploading(true);
-      // setUploadProgress(0);
-
       const command = new PutObjectCommand(uploadParams);
       const response = await s3Client.send(command);
 
       setS3AudioKey(uniqueFileName);
-      // setUploadProgress(100);
-      // setIsUploading(false);
-
-      console.log('Audio uploaded successfully to S3', response, uniqueFileName);
 
       songNameRef.current = file.name.replace(".mp3", "");
 
     } catch (error) {
       console.error('Error uploading file to S3:', error);
-      // setIsUploading(false);
     }
   };
 
@@ -378,10 +340,6 @@ const RhythmGame = () => {
 
       const command = new PutObjectCommand(uploadParams);
       const response = await s3Client.send(command);
-
-      // setS3NotesKey(notesKey);
-
-      console.log("Notes uploaded successfully to S3", response, notesKey);
 
       noteNameRef.current = songNameRef.current;
 
@@ -430,7 +388,6 @@ const RhythmGame = () => {
         setLoadingProgress(100);
       });
       audio.addEventListener('canplaythrough', () => {
-        console.log("Audio loaded successfully");
         songRef.current = audio;
         setLoadingProgress(100);
       });
@@ -553,16 +510,15 @@ const RhythmGame = () => {
     }
   }, [notesFile]);
   
-  // Generate some demo notes for visualization (fallback)
   const generateDemoNotes = (bpm) => {
-    const beatTime = 60 / 120; // Time for one beat in seconds
+    const beatTime = 60 / 120;
     const t1 = [];
     const t2 = [];
     const t3 = [];
     const t4 = [];
     
     for (let i = 0; i < 100; i++) {
-      const time = 3 + (i * beatTime * 0.5); // Start 3 seconds in, notes every half beat
+      const time = 3 + (i * beatTime * 0.5);
       
       if (i % 4 === 0) t1.push({ time, y: 0, speed: 1.0 });
       if (i % 4 === 1) t2.push({ time, y: 0, speed: 1.0 });
@@ -576,9 +532,7 @@ const RhythmGame = () => {
     return { t1, t2, t3, t4 };
   };
   
-  // Reset game state for a new game - with explicit state updates
   const resetGameState = () => {
-    // Reset all game state values with direct assignments
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
@@ -597,32 +551,23 @@ const RhythmGame = () => {
 
   useEffect(() => {
     if (gameState === 'ingame' && score === 0 && combo === 0) {
-      console.log("Game State after rest:");
       debugState();
     }
   }, [gameState, score, combo]);
   
-  // Start the game loop
-  // Modify the startGame function
   const startGame = () => {
     setTimeout(() => {
-      // After the delay, set the game state to ingame and initialize everything
       setGameState('ingame');
       resetGameState();
 
       gameStartTimeRef.current = performance.now() / 1000;
       lastDebugTimeRef.current = gameStartTimeRef.current;
-      console.log("Game start time:", gameStartTimeRef.current);
-      console.log("Song start time:", songStartTimeRef.current);
       
-      // Start the game loop
       gameLoopRef.current = requestAnimationFrame(gameLoop);
       
-      // Play song with appropriate delay
       if (songRef.current) {
         const now = performance.now() / 1000 - gameStartTimeRef.current;
         const delay = songStartTimeRef.current - now;
-        console.log("Delay before playing:", delay);
         
         if (delay > 0) {
           setTimeout(() => {
@@ -654,19 +599,16 @@ const RhythmGame = () => {
     }, 2000);
   };
   
-  // Main game loop
   const gameLoop = (timestamp) => {
     const currentTime = timestamp / 1000 - gameStartTimeRef.current;
 
     updateNotesAndCheckMisses(currentTime);
     updateEffects(currentTime);
     
-    // Continue the game loop
     if (currentTime < songEndTimeRef.current) {
       gameLoopRef.current = requestAnimationFrame(gameLoop);
     } else {
       setGameState('result');
-      console.log("Game ended!");
     }
   };
 
@@ -709,9 +651,7 @@ const RhythmGame = () => {
     }
   }
   
-  // Update visual effects
   const updateEffects = (currentTime) => {
-    // Combo effect animation
     if (currentTime < comboTimeRef.current) {
       setComboEffect(prev => {
         return prev + (1 - prev) / 7;
@@ -722,12 +662,10 @@ const RhythmGame = () => {
       });
     }
     
-    // Decrease miss animation
     if (missAnim > 0) {
       setMissAnim(prev => Math.max(0, prev - 0.05));
     }
     
-    // Update key effect animations
     setEffectAnimations(prev => {
       return prev.map(anim => {
         if (anim < 5) {
@@ -738,9 +676,7 @@ const RhythmGame = () => {
     });
   };
   
-  // Handle missed notes
   const handleMiss = () => {
-    // console.log("Handle MISS");
     setMissCount(prev => prev + 1);
     const currentCombo = combo;
     setLastCombo(currentCombo);
@@ -756,11 +692,9 @@ const RhythmGame = () => {
     }, 100);
   };
   
-  // Check if a note was hit when a key is pressed
   const checkNoteHit = (trackIndex) => {
     const currentTime = performance.now() / 1000 - gameStartTimeRef.current;
     
-    // Get the track array based on the index
     let trackNotes;
     switch (trackIndex) {
       case 0: trackNotes = 't1'; break;
@@ -770,38 +704,29 @@ const RhythmGame = () => {
       default: return;
     }
     
-    // Check if there are any notes in the hit range
     if (notesRef.current[trackNotes].length > 0) {
-      // const hitPosition = 600; // Position of the hit line
       const firstNote = notesRef.current[trackNotes][0];
       
-      // If the note is within the hit window, register a hit
       const timeDiff = Math.abs(currentTime - firstNote.time);
-      if (timeDiff < 0.3) { // Simplified hit detection
+      if (timeDiff < 0.3) {
         
-        // Evaluate the hit quality
         evaluateHit(timeDiff, trackIndex);
         notesRef.current[trackNotes].shift();
         
-        // Trigger effect animation
         setEffectAnimations(prev => {
           const newEffects = [...prev];
-          newEffects[trackIndex] = 0; // Start animation
+          newEffects[trackIndex] = 0;
           return newEffects;
         });
       }
     }
   };
   
-  // Evaluate hit quality and update score
   const evaluateHit = (timeDiff, trackIndex) => {
-    // For the simplified version, we'll use pixel distance
     let hitRating = '';
     let scoreIncrease = 0;
     let comboIncrease = 0;
-    // let feverIncrease = 0;
     
-    // Evaluate based on distance from hit line
     if (timeDiff < 0.025) {
       hitRating = 'PERFECT';
       scoreIncrease = Math.round(100000 / (noteCount || 100));
@@ -832,40 +757,32 @@ const RhythmGame = () => {
       setMissAnim(1);
     }
     
-    // Capture current state values to use in calculations
     const currentCombo = combo;
     const currentMaxCombo = maxCombo;
     const currentScore = score;
     
-    // Update score - use a direct update
     const newScore = currentScore + scoreIncrease;
     setScore(newScore);
     
-    // Update combo if applicable
     if (comboIncrease > 0) {
       const newCombo = currentCombo + comboIncrease;
       setCombo(newCombo);
       
-      // Update max combo if needed
       if (newCombo > currentMaxCombo) {
         setMaxCombo(newCombo);
       }
     }
     
-    // Update rating
     setRating(hitRating);
     
-    // Set combo effect time
     comboTimeRef.current = performance.now() / 1000 - gameStartTimeRef.current + 1;
     
-    // Clear previous timeout and set new one
     clearTimeout(ratingTimeoutRef.current);
     ratingTimeoutRef.current = setTimeout(() => {
       setRating('');
     }, 200);
   };
   
-  // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
       if (gameLoopRef.current) {
@@ -880,7 +797,6 @@ const RhythmGame = () => {
     };
   }, []);
   
-  // Render different game states
   if (gameState === 'lobby') {
     return <LobbyScreen 
       songs={songList} 

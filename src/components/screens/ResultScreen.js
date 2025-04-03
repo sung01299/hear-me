@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Crown, TrendingUp, Award, BarChart2 } from 'lucide-react';
+import { TrendingUp, Award, BarChart2 } from 'lucide-react';
 import '../aesthetics/RhythmGame.css';
 import '../aesthetics/RhythmGameEffects.css';
 
-/**
- * Enhanced Game Result screen component
- */
 const ResultScreen = ({
   score, 
   maxCombo, 
@@ -22,7 +19,6 @@ const ResultScreen = ({
   const [rank, setRank] = useState('');
   const [stars, setStars] = useState([]);
 
-  // Generate stars for the background
   useEffect(() => {
     const starArray = Array(30).fill().map((_, index) => {
       return {
@@ -38,14 +34,12 @@ const ResultScreen = ({
     setStars(starArray);
   }, []);
 
-  // Calculate accuracy and rank
   useEffect(() => {
     const totalNotes = perfectCount + greatCount + goodCount + badCount + worstCount + missCount;
     if (totalNotes === 0) return;
 
-    // Score animation
-    const duration = 2000; // 2 seconds
-    const increment = score / (duration / 20); // Update every 20ms
+    const duration = 2000;
+    const increment = score / (duration / 20);
     let current = 0;
     
     const timer = setInterval(() => {
@@ -53,14 +47,12 @@ const ResultScreen = ({
       if (current >= score) {
         clearInterval(timer);
         setAnimateScore(score);
-        // Show stats after score animation
         setTimeout(() => setShowStats(true), 300);
       } else {
         setAnimateScore(Math.floor(current));
       }
     }, 20);
 
-    // Calculate rank based on accuracy
     const weightedScore = (
       (perfectCount * 1) + 
       (greatCount * 0.9) + 
@@ -76,23 +68,19 @@ const ResultScreen = ({
     else if (weightedScore >= 0.6) calculatedRank = 'C';
     else calculatedRank = 'D';
     
-    // Animate rank appearance
     setTimeout(() => setRank(calculatedRank), 2200);
     
     return () => clearInterval(timer);
   }, [score, perfectCount, greatCount, goodCount, badCount, worstCount, missCount]);
 
-  // Calculate total hit notes
   const totalHitNotes = perfectCount + greatCount + goodCount + badCount + worstCount;
   const totalNotes = totalHitNotes + missCount;
   const accuracy = totalNotes ? Math.round((totalHitNotes / totalNotes) * 100) : 0;
   
-  // Calculate percentages for the progress bars
   const getPercentage = (count) => {
     return totalNotes ? Math.round((count / totalNotes) * 100) : 0;
   };
 
-  // Get a color based on the rank
   const getRankColor = () => {
     switch(rank) {
       case 'S': return 'linear-gradient(45deg, #c026d3, #8b5cf6)';
@@ -111,7 +99,6 @@ const ResultScreen = ({
         backgroundPosition: 'center',
       }}>
       <div className="lobby-bg-circles"></div>
-      {/* Background stars */}
       <div className="stars-container">
         {stars.map(star => (
           <div 
@@ -129,15 +116,12 @@ const ResultScreen = ({
         ))}
       </div>
 
-      {/* Main content container */}
       <div className="result-content-container glass-dark">
-        {/* Header */}
         <div className="result-header">
           <h1 className="result-title">Results</h1>
           <h2 className="result-song-name">{songName}</h2>
         </div>
         
-        {/* Score and rank section */}
         <div className="result-main">
           <div className="result-score-section">
             <div className="result-score-label">Final Score</div>
@@ -170,15 +154,12 @@ const ResultScreen = ({
           </div>
         </div>
 
-        {/* Stats section */}
         <div className={`result-stats-section ${showStats ? 'result-stats-show' : 'result-stats-hide'}`}>
           <div className="result-combo-section">
-            {/* <Crown size={20} className="result-crown-icon" /> */}
             <span className="result-combo-label">Max Combo:</span>
             <span className="result-combo-value">{maxCombo}</span>
           </div>
           
-          {/* Rating statistics with progress bars */}
           <div className="result-stats-grid">
             <div className="result-stat-row result-stat-perfect">
               <div className="result-stat-header">
@@ -277,7 +258,6 @@ const ResultScreen = ({
             </div>
           </div>
           
-          {/* Statistics summary */}
           <div className="result-summary glass">
             <BarChart2 size={18} className="summary-icon" />
             <div className="result-summary-text">
@@ -292,7 +272,6 @@ const ResultScreen = ({
         </div>
       </div>
 
-      {/* Return to lobby instruction */}
       <div className="result-return-instruction glass">
         <span className="space-key">⎵</span>
         Press SPACE to return to lobby
