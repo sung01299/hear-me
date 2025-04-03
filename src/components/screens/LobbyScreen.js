@@ -1,66 +1,68 @@
-import React from 'react';
-import { Music, ChevronUp, ChevronDown, BarChart2, Clock, Play } from 'lucide-react';
-import '../RhythmGame/RhythmGame.css';
+import React, { useEffect } from 'react';
+import { Music, ChevronUp, ChevronDown, Play, Upload, Disc } from 'lucide-react';
+import '../aesthetics/RhythmGame.css';
+import '../aesthetics/RhythmGameEffects.css';
 
-/**
- * Enhanced Lobby screen component for song selection
- * @param {Object} props - Component props
- * @param {Array} props.songs - List of available songs
- * @param {number} props.currentSong - Index of currently selected song
- */
 const LobbyScreen = ({ songs, currentSong, handleFileUpload, isAnalyzing, startAnalysis, audioFile }) => {
-  // Generate animated music notes
-  const renderMusicNotes = () => {
-    return Array(12).fill().map((_, index) => {
-      const delay = index * 0.5;
-      const size = 14 + Math.random() * 10;
-      const opacity = 0.4 + Math.random() * 0.3;
-      const left = Math.random() * 100;
-      const duration = 15 + Math.random() * 15;
-      
-      const style = {
-        animationDelay: `${delay}s`,
-        animationDuration: `${duration}s`,
-        fontSize: `${size}px`,
-        left: `${left}%`,
-        opacity
-      };
-      
-      return (
-        <div key={index} className="lobby-floating-note" style={style}>
-          {index % 2 === 0 ? '♪' : '♫'}
-        </div>
-      );
-    });
-  };
+  const [animatedNotes, setAnimatedNotes] = React.useState([]);
 
-  // console.log("song:", songs);
+  useEffect(() => {
+    const notes = Array(20).fill().map((_, index) => {
+      const delay = Math.random() * 5;
+      const duration = 15 + Math.random() * 10;
+      const size = 20 + Math.random() * 20;
+      const left = Math.random() * 100;
+      const type = Math.random() > 0.5 ? '♪' : '♫';
+
+      return { id: index, delay, duration, size, left, type };
+    });
+
+    setAnimatedNotes(notes);
+  }, []);
 
   return (
     <div className="lobby-container">
-      <div className="lobby-background">
-        <div className="lobby-bg-gradient"></div>
+      <div className="lobby-background bg-gradient"
+        style={{
+          backgroundImage: 'url("assets/background.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}>
         <div className="lobby-bg-circles"></div>
-        <div className="lobby-floating-notes">
-          {renderMusicNotes()}
-        </div>
+        <div className="bg-grid"></div>
+        
+        {/* Animated floating notes */}
+        {animatedNotes.map(note => (
+          <div 
+            key={note.id}
+            className="floating-musical-note"
+            style={{
+              left: `${note.left}%`,
+              animationDelay: `${note.delay}s`,
+              animationDuration: `${note.duration}s`,
+              fontSize: `${note.size}px`
+            }}
+          >
+            {note.type}
+          </div>
+        ))}
       </div>
       
       <div className="lobby-content">
         <h1 className="lobby-title">
-          <span className="lobby-title-main">Rhythm</span>
-          <span className="lobby-title-sub">Master</span>
+          <span className="lobby-title-main">Hear Me</span>
+          {/* <span className="lobby-title-sub">Master</span> */}
         </h1>
         
-        <div className="lobby-song-container">
-          <h2 className="lobby-song-header">
+        <div className="lobby-song-container glass-dark">
+          {/* <h2 className="lobby-song-header">
             <Music className="lobby-header-icon" />
             <span>Select Your Track</span>
-          </h2>
+          </h2> */}
           
-          <div className="lobby-scroll-indicator top">
+          {/* <div className="lobby-scroll-indicator top">
             <ChevronUp size={20} />
-          </div>
+          </div> */}
           
           <div className="lobby-song-list">
             {songs.map((song, index) => (
@@ -69,40 +71,41 @@ const LobbyScreen = ({ songs, currentSong, handleFileUpload, isAnalyzing, startA
                 className={`lobby-song-item ${index === currentSong ? 'selected' : ''}`}
               >
                 {index === 0 
-                  ? <div className="lobby-song-new-indicator">
-                      <div className="lobby-song-name">
-                        <input
-                          type="file"
-                          accept="audio/*"
-                          onChange={handleFileUpload}
-                          disabled={isAnalyzing}
-                        />
+                  ? <div className="lobby-song-upload">
+                      <div className="lobby-upload-icon">
+                        <Upload size={24} className="upload-icon-svg" />
+                      </div>
+                      <div className="lobby-song-info-upload">
+                        <div className="lobby-song-name">Upload Your Own Song</div>
+                        <div className="lobby-song-upload-form">
+                          <label className="upload-button neon-button">
+                            <span>Choose File</span>
+                            <input
+                              type="file"
+                              accept="audio/*"
+                              onChange={handleFileUpload}
+                              disabled={isAnalyzing}
+                              className="file-input"
+                            />
+                          </label>
+                          {/* {audioFile && (
+                            <div className="selected-file">
+                              {audioFile.name}
+                            </div>
+                          )} */}
+                        </div>
                       </div>
                     </div>
                   : (
                     <div className="lobby-song-info">
                       <div className="lobby-song-preview">
-                        <div className="lobby-song-album" style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/assets/backgrounds/${song.background || 'default.jpg'})` }}>
-                          {index === currentSong && (
-                            <div className="lobby-song-play-icon">
-                              <Play size={24} />
-                            </div>
-                          )}
+                        <div className="lobby-song-album">
+                          <Disc size={30} className="album-icon" />
                         </div>
                       </div>
                       
-                      <div className="lobby-song-info">
-                        <div className="lobby-song-name">{song.name}</div>
-                        <div className="lobby-song-details">
-                          <div className="lobby-song-bpm">
-                            <BarChart2 size={14} />
-                            <span>BPM: {song.bpm}</span>
-                          </div>
-                          <div className="lobby-song-duration">
-                            <Clock size={14} />
-                            <span>Notes: {song.lines}</span>
-                          </div>
-                        </div>
+                      <div className="lobby-song-details">
+                        <div className={`lobby-song-name${index===currentSong ? ' selected' : ''}`}>{song.name}</div>
                       </div>
                     </div>
                   )
@@ -114,28 +117,31 @@ const LobbyScreen = ({ songs, currentSong, handleFileUpload, isAnalyzing, startA
             ))}
           </div>
           
-          <div className="lobby-scroll-indicator bottom">
+          {/* <div className="lobby-scroll-indicator bottom">
             <ChevronDown size={20} />
-          </div>
+          </div> */}
         </div>
         
-        <div className="lobby-instructions">
+        <div className="lobby-instructions glass-dark-instructions">
           <div className="lobby-key-instruction">
             <div className="lobby-key">
-              <ChevronUp size={16} />
+              <ChevronUp size={17} />
             </div>
             <div className="lobby-key">
-              <ChevronDown size={16} />
+              <ChevronDown size={17} />
             </div>
-            <span>Select track</span>
+            <span style={{fontWeight: 'bold', fontSize: 17}}>Select track</span>
           </div>
           
           <div className="lobby-key-instruction">
             <div className="lobby-key lobby-key-space">Space</div>
-            <span>Start game</span>
+            <span style={{fontWeight: 'bold', fontSize: 17}}>Start game</span>
           </div>
         </div>
       </div>
+      
+      {/* Visual effects layer */}
+      <div className="lobby-visual-effect"></div>
     </div>
   );
 };

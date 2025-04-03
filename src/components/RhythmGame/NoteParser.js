@@ -4,7 +4,6 @@
  * @returns {Object} Parsed note data
  */
 export const parseNoteFile = (fileContent) => {
-    const lines = fileContent.split('\n');
     let noteStartTime = 0;
     let songStartTime = 0;
     let baseBpm = 0;
@@ -18,30 +17,28 @@ export const parseNoteFile = (fileContent) => {
       t4: []
     };
 
-    const parsedJson = JSON.parse(fileContent);
-
-    const t1Notes = parsedJson.t1;
-    const t2Notes = parsedJson.t2;
-    const t3Notes = parsedJson.t3;
-    const t4Notes = parsedJson.t4;
+    const t1Notes = fileContent.t1;
+    const t2Notes = fileContent.t2;
+    const t3Notes = fileContent.t3;
+    const t4Notes = fileContent.t4;
 
     t1Notes.forEach((noteTime) => {
-      parsedNotes.t1.push({ time: noteTime, y: 0, speed: 1 });
+      parsedNotes.t1.push({ time: noteTime + 2, y: 0, speed: 1 });
       totalNotes++;
     })
 
     t2Notes.forEach((noteTime) => {
-      parsedNotes.t2.push({ time: noteTime, y: 0, speed: 1 });
+      parsedNotes.t2.push({ time: noteTime + 2, y: 0, speed: 1 });
       totalNotes++;
     })
 
     t3Notes.forEach((noteTime) => {
-      parsedNotes.t3.push({ time: noteTime, y: 0, speed: 1 });
+      parsedNotes.t3.push({ time: noteTime + 2, y: 0, speed: 1 });
       totalNotes++;
     })
 
     t4Notes.forEach((noteTime) => {
-      parsedNotes.t4.push({ time: noteTime, y: 0, speed: 1 });
+      parsedNotes.t4.push({ time: noteTime + 2, y: 0, speed: 1 });
       totalNotes++;
     })
     
