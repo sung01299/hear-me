@@ -42,8 +42,6 @@ const RhythmGame = () => {
   const [notesFile, setNotesFile] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
-
-  const [s3AudioKey, setS3AudioKey] = useState(null);
   
   const songRef = useRef(null);
   const gameLoopRef = useRef(null);
@@ -54,6 +52,8 @@ const RhythmGame = () => {
   const comboTimeRef = useRef(0);
   const ratingTimeoutRef = useRef(null);
   const lastDebugTimeRef = useRef(0);
+
+  const s3AudioKeyRef = useRef(null);
 
   const gameStateRef = useRef(gameState);
   const scoreRef = useRef(score);
@@ -272,6 +272,7 @@ const RhythmGame = () => {
     const file = event.target.files[0];
     if (!file) return;
 
+    s3AudioKeyRef.current = `user_uploads/${file.name}`;
     setAudioFile(file);
     notesRef.current = null;
 
@@ -303,8 +304,6 @@ const RhythmGame = () => {
       const command = new PutObjectCommand(uploadParams);
       const response = await s3Client.send(command);
 
-      setS3AudioKey(uniqueFileName);
-
       songNameRef.current = file.name.replace(".mp3", "");
 
     } catch (error) {
@@ -313,13 +312,13 @@ const RhythmGame = () => {
   };
 
   const uploadNotesToS3 = async (notesData) => {
-    if (!s3AudioKey) return;
+    if (!s3AudioKeyRef.current) return;
 
     try {
       const notesJson = JSON.stringify(notesData);
       const blob = new Blob([notesJson], { type: 'application/json' });
 
-      const notesKey = s3AudioKey.replace(/\.[^.]+$/, '.json');
+      const notesKey = s3AudioKeyRef.current.replace(/\.[^.]+$/, '.json');
 
       const s3Client = getS3Client();
 
