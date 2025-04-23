@@ -410,7 +410,7 @@ const RhythmGame = () => {
       const { noteStartTime, songStartTime, parsedNotes, totalNotes } = parseNoteFile(jsonNotesData);
       
       songStartTimeRef.current = songStartTime;
-      songEndTimeRef.current = audioDuration + 2;
+      songEndTimeRef.current = audioDuration + 0.3;
       noteStartTimeRef.current = noteStartTime;
       notesRef.current = parsedNotes;
       setNoteCount(totalNotes);
